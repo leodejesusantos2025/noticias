@@ -8,32 +8,50 @@ from werkzeug.security import generate_password_hash
 from datetime import datetime
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
+POSTGRES_HOST = os.environ.get('POSTGRES_HOST')
+POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
+POSTGRES_DB = os.environ.get('POSTGRES_DB', 'postgres')
+POSTGRES_USER = os.environ.get('POSTGRES_USER')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
 APP_ENV = os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'production')).lower()
 ALLOW_SQLITE = os.environ.get('ALLOW_SQLITE', 'false').lower() == 'true'
 SQLITE_PATH = os.environ.get('SQLITE_PATH', 'clicks.db')
 logger = logging.getLogger(__name__)
 
-if not DATABASE_URL:
+if DATABASE_URL:
+    print(f"✅ DATABASE_URL encontrada: {DATABASE_URL[:50]}...")
+    conn_string = DATABASE_URL
+    db_type = 'postgresql'
+elif POSTGRES_HOST and POSTGRES_USER and POSTGRES_PASSWORD:
+    print(f"✅ Configuração PostgreSQL encontrada: {POSTGRES_USER}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}")
+    conn_string = {
+        'host': POSTGRES_HOST,
+        'port': POSTGRES_PORT,
+        'dbname': POSTGRES_DB,
+        'user': POSTGRES_USER,
+        'password': POSTGRES_PASSWORD,
+    }
+    db_type = 'postgresql'
+else:
     if APP_ENV not in {'development', 'dev', 'local'} and not ALLOW_SQLITE:
         raise RuntimeError(
-            "DATABASE_URL é obrigatória fora de desenvolvimento. "
+            "DATABASE_URL ou POSTGRES_HOST/POSTGRES_USER/POSTGRES_PASSWORD são obrigatórias fora de desenvolvimento. "
             "Defina APP_ENV=development para uso local ou ALLOW_SQLITE=true conscientemente."
         )
     print("AVISO: DATABASE_URL não definida. Usando SQLite para desenvolvimento local.")
     DATABASE = 'clicks.db'
     conn_string = SQLITE_PATH
     db_type = 'sqlite'
-else:
-    print(f"✅ DATABASE_URL encontrada: {DATABASE_URL[:50]}...")
-    conn_string = DATABASE_URL
-    db_type = 'postgresql'
 
 def get_db_connection():
     if db_type == 'sqlite':
         conn = sqlite3.connect(conn_string, timeout=10, check_same_thread=False)
         conn.row_factory = sqlite3.Row
     else:
-        conn = psycopg2.connect(conn_string, cursor_factory=psycopg2.extras.DictCursor)
+        if isinstance(conn_string, dict):
+            conn = psycopg2.connect(**conn_string, cursor_factory=psycopg2.extras.DictCursor)
+        else:
+            conn = psycopg2.connect(conn_string, cursor_factory=psycopg2.extras.DictCursor)
     return conn
 
 class User(UserMixin):
@@ -176,6 +194,8 @@ def init_db():
                     client_port TEXT,
                     port_detection_method TEXT,
                     network_info TEXT,
+                    destination_port TEXT,
+                    destination_port_method TEXT,
                     FOREIGN KEY (link_id) REFERENCES generated_links (link_id) ON DELETE CASCADE
                 )
             ''')
@@ -190,6 +210,12 @@ def init_db():
             if 'network_info' not in clicks_columns:
                 cursor.execute('ALTER TABLE clicks ADD COLUMN network_info TEXT')
                 print("✅ Coluna network_info adicionada à tabela clicks")
+            if 'destination_port' not in clicks_columns:
+                cursor.execute('ALTER TABLE clicks ADD COLUMN destination_port TEXT')
+                print("✅ Coluna destination_port adicionada à tabela clicks")
+            if 'destination_port_method' not in clicks_columns:
+                cursor.execute('ALTER TABLE clicks ADD COLUMN destination_port_method TEXT')
+                print("✅ Coluna destination_port_method adicionada à tabela clicks")
             cursor.execute("PRAGMA table_info(users)")
             user_columns = [c[1] for c in cursor.fetchall()]
             if 'is_admin' not in user_columns:
@@ -240,6 +266,8 @@ def init_db():
                     client_port VARCHAR(10),
                     port_detection_method VARCHAR(50),
                     network_info TEXT,
+                    destination_port VARCHAR(10),
+                    destination_port_method VARCHAR(50),
                     FOREIGN KEY (link_id) REFERENCES generated_links (link_id) ON DELETE CASCADE
                 );
             ''')
@@ -247,6 +275,8 @@ def init_db():
             cursor.execute('ALTER TABLE clicks ADD COLUMN IF NOT EXISTS client_port VARCHAR(10)')
             cursor.execute('ALTER TABLE clicks ADD COLUMN IF NOT EXISTS port_detection_method VARCHAR(50)')
             cursor.execute('ALTER TABLE clicks ADD COLUMN IF NOT EXISTS network_info TEXT')
+            cursor.execute('ALTER TABLE clicks ADD COLUMN IF NOT EXISTS destination_port VARCHAR(10)')
+            cursor.execute('ALTER TABLE clicks ADD COLUMN IF NOT EXISTS destination_port_method VARCHAR(50)')
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE')
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
             cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP')
@@ -406,21 +436,35 @@ def get_generated_link_details(link_id):
     conn.close()
     return result if result else None
 
-def add_click(link_id, ip, user_agent, referer, accept_language, browser_fingerprint=None, geolocation_info=None, notes="", client_port=None, port_detection_method=None, network_info=None):
+def add_click(
+    link_id,
+    ip,
+    user_agent,
+    referer,
+    accept_language,
+    browser_fingerprint=None,
+    geolocation_info=None,
+    notes="",
+    client_port=None,
+    port_detection_method=None,
+    network_info=None,
+    destination_port=None,
+    destination_port_method=None
+):
     conn = get_db_connection()
     cursor = conn.cursor()
     print(f"🔍 DEBUG: Salvando click - Link: {link_id}, IP: {ip}, Porta: {client_port}")
     try:
         if db_type == 'sqlite':
             cursor.execute('''
-                INSERT INTO clicks (link_id, ip_address, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (link_id, ip, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info))
+                INSERT INTO clicks (link_id, ip_address, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info, destination_port, destination_port_method)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (link_id, ip, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info, destination_port, destination_port_method))
         else:
             cursor.execute('''
-                INSERT INTO clicks (link_id, ip_address, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (link_id, ip, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info))
+                INSERT INTO clicks (link_id, ip_address, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info, destination_port, destination_port_method)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (link_id, ip, user_agent, referer, accept_language, browser_fingerprint, geolocation_info, notes, client_port, port_detection_method, network_info, destination_port, destination_port_method))
         conn.commit()
         print(f"✅ DEBUG: Commit do click realizado com sucesso") # Novo log de diagnóstico
         conn.close()
@@ -440,7 +484,8 @@ def get_all_clicks_for_user(user_id, ip_filter=None, start_date=None, end_date=N
             SELECT
                 c.id, c.ip_address, c.user_agent, c.referer, c.accept_language,
                 c.timestamp, c.link_id, c.browser_fingerprint, c.geolocation_info, c.notes,
-                c.client_port, c.port_detection_method, c.network_info, gl.original_url
+                c.client_port, c.port_detection_method, c.network_info,
+                c.destination_port, c.destination_port_method, gl.original_url
             FROM clicks c
             JOIN generated_links gl ON c.link_id = gl.link_id
             WHERE gl.user_id = ?
@@ -463,7 +508,8 @@ def get_all_clicks_for_user(user_id, ip_filter=None, start_date=None, end_date=N
             SELECT
                 c.id, c.ip_address, c.user_agent, c.referer, c.accept_language,
                 c.timestamp, c.link_id, c.browser_fingerprint, c.geolocation_info, c.notes,
-                c.client_port, c.port_detection_method, c.network_info, gl.original_url
+                c.client_port, c.port_detection_method, c.network_info,
+                c.destination_port, c.destination_port_method, gl.original_url
             FROM clicks c
             JOIN generated_links gl ON c.link_id = gl.link_id
             WHERE gl.user_id = %s

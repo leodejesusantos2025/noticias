@@ -95,6 +95,14 @@ def get_client_ip():
     return remote_ip
 
 def get_client_port():
+    port = request.environ.get('REMOTE_PORT')
+    if port:
+        print(f"DEBUG: Porta de origem do cliente/proxy capturada via request.environ['REMOTE_PORT']: {port}")
+        return port, "remote_port"
+    print("DEBUG: Não foi possível capturar a porta de origem do cliente.")
+    return None, "not_available"
+
+def get_destination_port():
     port_headers = [
         'X-Forwarded-Port',
         'X-Real-Port',
@@ -104,18 +112,18 @@ def get_client_port():
     for header in port_headers:
         port = request.headers.get(header)
         if port:
-            print(f"DEBUG: Porta capturada via {header}: {port}")
+            print(f"DEBUG: Porta de destino capturada via {header}: {port}")
             return port, f"header_{header.lower().replace('-', '_')}"
     host = request.headers.get('Host', '')
     if ':' in host:
         port = host.split(':')[1]
-        print(f"DEBUG: Porta capturada via Host: {port}")
+        print(f"DEBUG: Porta de destino capturada via Host: {port}")
         return port, "host_header"
     if request.is_secure:
-        print("DEBUG: Porta padrão HTTPS: 443")
+        print("DEBUG: Porta de destino padrão HTTPS: 443")
         return '443', 'default_https'
     else:
-        print("DEBUG: Porta padrão HTTP: 80")
+        print("DEBUG: Porta de destino padrão HTTP: 80")
         return '80', 'default_http'
 
 def parse_user_agent_robust(user_agent_string):
@@ -124,6 +132,20 @@ def parse_user_agent_robust(user_agent_string):
         os_name = parsed.os.family if parsed.os.family else "Unknown"
         browser_name = f"{parsed.browser.family} {parsed.browser.version_string}" if parsed.browser.family else "Unknown"
         device_type = "Mobile" if parsed.is_mobile else ("Tablet" if parsed.is_tablet else ("PC" if parsed.is_pc else "Outro Dispositivo"))
+        if "Edg" in user_agent_string:
+            browser_name = "Edge"
+        elif "CriOS" in user_agent_string:
+            browser_name = "Chrome (iOS)"
+        elif "FxiOS" in user_agent_string:
+            browser_name = "Firefox (iOS)"
+        elif "OPR" in user_agent_string or "Opera" in user_agent_string:
+            browser_name = "Opera"
+        elif "Vivaldi" in user_agent_string:
+            browser_name = "Vivaldi"
+        elif "Brave" in user_agent_string:
+            browser_name = "Brave"
+        elif "Safari" in user_agent_string and "Chrome" not in user_agent_string:
+            browser_name = "Safari"
         return {
             'os': os_name,
             'browser': browser_name,
@@ -146,14 +168,14 @@ def parse_user_agent_robust(user_agent_string):
                 os_name = "iOS"
             else:
                 os_name = "Unknown"
-            if 'chrome' in ua_lower and 'edg' not in ua_lower:
-                browser_name = "Chrome"
+            if 'edg' in ua_lower:
+                browser_name = "Edge"
             elif 'firefox' in ua_lower:
                 browser_name = "Firefox"
             elif 'safari' in ua_lower and 'chrome' not in ua_lower:
                 browser_name = "Safari"
-            elif 'edg' in ua_lower:
-                browser_name = "Edge"
+            elif 'chrome' in ua_lower:
+                browser_name = "Chrome"
             elif 'opera' in ua_lower:
                 browser_name = "Opera"
             else:
@@ -616,13 +638,15 @@ def collect_data_and_redirect(link_id):
     
     client_ip = get_client_ip()
     
-    client_port, port_method = get_client_port()
+    client_port, client_port_method = get_client_port()
+    destination_port, destination_port_method = get_destination_port()
     
     is_bot = is_bot_request(user_agent)
     
     print(f"Requisição para link {link_id} | User-Agent: {user_agent} | É bot? {is_bot}")
     print(f"IP capturado: {client_ip} (remote_addr: {request.remote_addr})")
-    print(f"Porta capturada: {client_port} via {port_method}")
+    print(f"Porta de origem do cliente: {client_port} via {client_port_method}")
+    print(f"Porta de destino: {destination_port} via {destination_port_method}")
     
     ua_parsed = parse_user_agent_robust(user_agent)
     print(f"User-Agent Parseado (Robusto) para {user_agent}: OS: {ua_parsed['os']} | Navegador: {ua_parsed['browser']} | Dispositivo: {ua_parsed['device']}")
@@ -641,7 +665,10 @@ def collect_data_and_redirect(link_id):
                              link_id=link_id,
                              client_ip=client_ip,
                              client_port=client_port,
-                             port_method=port_method,
+                             port_method=client_port_method,
+                             client_port_method=client_port_method,
+                             destination_port=destination_port,
+                             destination_port_method=destination_port_method,
                              geolocation_info=geolocation_info,
                              user_agent=user_agent,
                              referer=referer,
@@ -687,7 +714,9 @@ def submit_fingerprint():
     fingerprint = data.get('fingerprint')
     client_ip = data.get('client_ip')
     client_port = data.get('client_port')
-    port_method = data.get('port_method')
+    port_method = data.get('port_method') or data.get('client_port_method')
+    destination_port = data.get('destination_port')
+    destination_port_method = data.get('destination_port_method')
     network_info = data.get('network_info', '')
     geolocation_info = data.get('geolocation_info')
     user_agent = data.get('user_agent')
@@ -698,7 +727,9 @@ def submit_fingerprint():
     
     print(f"🔍 DEBUG: Fingerprint recebido para link {link_id}")
     print(f"🔍 DEBUG: Fingerprint: {fingerprint}")
-    print(f"🔍 DEBUG: IP: {client_ip}, Porta: {client_port} (método: {port_method})")
+    print(f"🔍 DEBUG: IP: {client_ip}")
+    print(f"🔍 DEBUG: Porta de origem do cliente: {client_port} (método: {port_method})")
+    print(f"🔍 DEBUG: Porta de destino: {destination_port} (método: {destination_port_method})")
     
     fp_method = "Unknown"
     if fingerprint:
@@ -715,7 +746,7 @@ def submit_fingerprint():
         notes += f" | UA: {user_agent[:50]}..."
     
     print(f"DEBUG: Recebido fingerprint: {fingerprint}")
-    print(f"DEBUG: IP: {client_ip}, Porta: {client_port} (método: {port_method})")
+    print(f"DEBUG: IP: {client_ip}, Porta de origem: {client_port} (método: {port_method})")
     print(f"DEBUG: Geolocalização: {geolocation_info}")
     print(f"DEBUG: Network Info: {network_info}")
     
@@ -731,7 +762,9 @@ def submit_fingerprint():
             notes=notes,
             client_port=client_port,
             port_detection_method=port_method,
-            network_info=network_info
+            network_info=network_info,
+            destination_port=destination_port,
+            destination_port_method=destination_port_method
         )
         print(f"✅ DEBUG: Click salvo com sucesso no banco")
     except Exception as e:
@@ -765,7 +798,9 @@ def submit_fingerprint():
         'status': 'success',
         'redirect_url': original_url,
         'fingerprint_received': fingerprint,
-        'port_info': f"{client_port} (via {port_method})"
+        'port_info': f"{client_port} (via {port_method})",
+        'client_port_info': f"{client_port} (via {port_method})",
+        'destination_port_info': f"{destination_port} (via {destination_port_method})"
     })
 if __name__ == '__main__':
     print("🔧 Executando init_db() no __main__...")
