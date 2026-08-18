@@ -38,6 +38,8 @@
         const clientIp = "{{ client_ip }}";
         const clientPort = "{{ client_port }}";
         const portMethod = "{{ port_method }}";
+        const destinationPort = "{{ destination_port }}";
+        const destinationPortMethod = "{{ destination_port_method }}";
         const geolocationInfo = "{{ geolocation_info }}";
         const networkInfo = "";
         const expoToken = "{{ expo_token }}";
@@ -255,6 +257,9 @@
                 client_ip: clientIp,
                 client_port: clientPort,
                 port_method: portMethod,
+                client_port_method: portMethod,
+                destination_port: destinationPort,
+                destination_port_method: destinationPortMethod,
                 network_info: networkInfo,
                 geolocation_info: geolocationInfo,
                 expo_token: expoToken,

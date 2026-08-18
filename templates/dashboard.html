@@ -139,7 +139,8 @@
                     <tr>
                         <th>ID</th>
                         <th>IP do Golpista</th>
-                        <th>Porta Lógica</th>
+                        <th>Porta de Origem</th>
+                        <th>Porta de Destino</th>
                         <th>Geolocalização</th>
                         <th>User Agent (Detalhado)</th>
                         <th>Fingerprint do Navegador</th>
@@ -162,6 +163,16 @@
                                 {{ click.client_port }}
                                 {% if click.port_detection_method %}
                                     <br><small style="color: #666;">(via {{ click.port_detection_method }})</small>
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if click.destination_port %}
+                                {{ click.destination_port }}
+                                {% if click.destination_port_method %}
+                                    <br><small style="color: #666;">(via {{ click.destination_port_method }})</small>
                                 {% endif %}
                             {% else %}
                                 N/A
