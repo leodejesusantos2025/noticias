@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="{{ og_title }}">
+    <meta property="og:description" content="{{ og_description }}">
+    <meta property="og:image" content="{{ og_image }}">
+    <meta property="og:url" content="{{ og_url }}">
+    <meta property="og:type" content="website">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ og_title }}">
+    <meta name="twitter:description" content="{{ og_description }}">
+    <meta name="twitter:image" content="{{ og_image }}">
+
+    <title>{{ og_title }}</title>
+
+    <meta http-equiv="refresh" content="0;url={{ original_url }}">
+</head>
+<body>
+    <p>Redirecionando para: <a href="{{ original_url }}">{{ original_url }}</a></p>
+    <img src="{{ og_image }}" alt="Imagem de pré-visualização" style="display:none;">
+</body>
+</html>

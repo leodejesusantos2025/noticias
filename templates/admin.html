@@ -1,0 +1,300 @@
+<!-- Substitua todo o conteúdo do seu arquivo admin.html por este código: -->
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Investigador Digital</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #333; }
+        .navbar { background: rgba(0, 0, 0, 0.8); padding: 1rem 2rem; color: white; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(10px); }
+        .navbar h1 { font-size: 1.5rem; font-weight: 600; }
+        .nav-links { display: flex; gap: 1rem; align-items: center; }
+        .nav-links a { color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 5px; transition: background-color 0.3s; }
+        .nav-links a:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .admin-badge { background: #ff6b6b; color: white; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.8rem; font-weight: bold; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .admin-header { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); margin-bottom: 2rem; text-align: center; }
+        .admin-header h2 { color: #333; margin-bottom: 0.5rem; font-size: 2rem; }
+        .admin-header p { color: #666; font-size: 1.1rem; }
+        .admin-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .admin-section { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); }
+        .section-title { font-size: 1.5rem; color: #333; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #667eea; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: #333; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 1rem; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .checkbox-group { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .checkbox-group input[type="checkbox"] { width: auto; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: transform 0.2s, box-shadow 0.2s; width: 100%; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); }
+        .btn-danger:hover { box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4); }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); }
+        .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #e1e5e9; }
+        .data-table th { background: #f8f9fa; font-weight: 600; color: #333; }
+        .data-table tr:hover { background: #f8f9fa; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.8rem; font-weight: bold; }
+        .status-admin { background: #ff6b6b; color: white; }
+        .status-user { background: #51cf66; color: white; }
+        .action-buttons { display: flex; gap: 0.5rem; }
+        .btn-small { padding: 0.5rem 1rem; font-size: 0.9rem; width: auto; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: bold; color: #667eea; margin-bottom: 0.5rem; }
+        .stat-label { color: #666; font-size: 0.9rem; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        @media (max-width: 768px) { .admin-sections { grid-template-columns: 1fr; } .navbar { flex-direction: column; gap: 1rem; } .nav-links { flex-wrap: wrap; justify-content: center; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>🔍 Investigador Digital</h1>
+        <div class="nav-links">
+            <span class="admin-badge">ADMIN</span>
+            <span>Olá, {{ current_user.username }}!</span>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="admin-header">
+            <h2>🛡️ Painel Administrativo</h2>
+            <p>Gerencie usuários, monitore atividades e mantenha a segurança do sistema</p>
+        </div>
+
+        <!-- Mensagem de Erro Crítico -->
+        {% if error_message %}
+            <div class="alert alert-error">
+                <strong>Erro ao carregar dados:</strong> {{ error_message }}
+            </div>
+        {% else %}
+            <!-- Estatísticas -->
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number" id="stat-total-users">0</div><div class="stat-label">Total de Usuários</div></div>
+                <div class="stat-card"><div class="stat-number" id="stat-total-links">0</div><div class="stat-label">Links Gerados</div></div>
+                <div class="stat-card"><div class="stat-number" id="stat-total-clicks">0</div><div class="stat-label">Total de Cliques</div></div>
+                <div class="stat-card"><div class="stat-number" id="stat-total-admins">0</div><div class="stat-label">Administradores</div></div>
+            </div>
+
+            <div class="admin-sections">
+                <!-- Gerenciamento de Usuários -->
+                <div class="admin-section">
+                    <h3 class="section-title">👥 Criar Novo Usuário</h3>
+                    <form method="POST" action="{{ url_for('admin_create_user') }}">
+                        <div class="form-group"><label for="username">Nome de Usuário:</label><input type="text" id="username" name="username" required></div>
+                        <div class="form-group"><label for="password">Senha:</label><input type="password" id="password" name="password" required></div>
+                        <div class="checkbox-group"><input type="checkbox" id="is_admin" name="is_admin"><label for="is_admin">Conceder privilégios de administrador</label></div>
+                        <button type="submit" class="btn">Criar Usuário</button>
+                    </form>
+                </div>
+
+                <!-- Reset de Senha -->
+                <div class="admin-section">
+                    <h3 class="section-title">🔑 Resetar Senha</h3>
+                    <form method="POST" action="" id="resetPasswordForm">
+                        <div class="form-group">
+                            <label for="reset_user">Selecionar Usuário:</label>
+                            <select id="reset_user" name="reset_user" required><option value="">Carregando...</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="new_password">Nova Senha:</label>
+                            <input type="password" id="new_password" name="new_password" required>
+                        </div>
+                        <button type="submit" class="btn btn-danger">Resetar Senha</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de Usuários -->
+            <div class="admin-section">
+                <h3 class="section-title">👤 Usuários Cadastrados</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome de Usuário</th>
+                            <th>Tipo</th>
+                            <th>Data de Criação</th>
+                            <th>Último Login</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <!-- Linhas serão inseridas via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Auditoria de Links -->
+            <div class="admin-section">
+                <h3 class="section-title">🔗 Auditoria de Links</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Link ID</th>
+                            <th>URL Original</th>
+                            <th>Criado por</th>
+                            <th>Data de Criação</th>
+                            <th>Cliques</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="links-table-body">
+                        <!-- Linhas serão inseridas via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+  <!-- Em admin.html, substitua todo o bloco <script> no final do arquivo por este: -->
+
+<!-- Em admin.html, substitua todo o bloco <script> no final do arquivo por este: -->
+
+<!-- Em admin.html, substitua todo o bloco <script> no final do arquivo por este: -->
+
+<script>
+    // Este script só será executado se não houver a `error_message`
+    {% if not error_message and users_json and links_json %}
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const usersData = JSON.parse('{{ users_json | safe }}');
+            const linksData = JSON.parse('{{ links_json | safe }}');
+
+            // --- 1. Popular Estatísticas ---
+            document.getElementById('stat-total-users').textContent = usersData.length;
+            document.getElementById('stat-total-admins').textContent = usersData.filter(u => u.is_admin).length;
+            document.getElementById('stat-total-links').textContent = linksData.length;
+            document.getElementById('stat-total-clicks').textContent = linksData.reduce((sum, link) => sum + (link.click_count || 0), 0);
+
+            // --- 2. Popular Tabela de Usuários e Dropdown de Reset ---
+            const usersTableBody = document.getElementById('users-table-body');
+            const resetUserSelect = document.getElementById('reset_user');
+            usersTableBody.innerHTML = '';
+            resetUserSelect.innerHTML = '<option value="">Escolha um usuário...</option>';
+
+            if (usersData.length === 0) {
+                usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Nenhum usuário encontrado.</td></tr>';
+            } else {
+                usersData.forEach(user => {
+                    const userRow = `
+                        <tr>
+                            <td>${user.id || 'N/A'}</td>
+                            <td>${escapeHTML(user.username || 'Inválido')}</td>
+                            <td>
+                                <span class="status-badge ${user.is_admin ? 'status-admin' : 'status-user'}">
+                                    ${user.is_admin ? 'Admin' : 'Usuário'}
+                                </span>
+                            </td>
+                            <td>${formatDate(user.created_at)}</td>
+                            <td>${formatDate(user.last_login)}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn btn-small btn-danger" onclick="promptResetPassword(${user.id}, '${escapeHTML(user.username || '')}')">
+                                        Reset Senha
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    usersTableBody.insertAdjacentHTML('beforeend', userRow);
+
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = escapeHTML(user.username || 'Inválido');
+                    resetUserSelect.appendChild(option);
+                });
+            }
+
+            // --- 3. Popular Tabela de Links ---
+            const linksTableBody = document.getElementById('links-table-body');
+            linksTableBody.innerHTML = '';
+
+            if (linksData.length === 0) {
+                linksTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Nenhum link encontrado.</td></tr>';
+            } else {
+                linksData.forEach(link => {
+                    const originalUrl = link.original_url || '';
+                    const linkRow = `
+                        <tr>
+                            <td><code>${escapeHTML(link.link_id || 'N/A')}</code></td>
+                            <td>
+                                <a href="${escapeHTML(originalUrl)}" target="_blank" title="${escapeHTML(originalUrl)}" style="color: #667eea; text-decoration: none;">
+                                    ${escapeHTML(originalUrl.substring(0, 40))}${originalUrl.length > 40 ? '...' : ''}
+                                </a>
+                            </td>
+                            <td>${escapeHTML(link.username || 'N/A')}</td>
+                            <td>${formatDate(link.created_at)}</td>
+                            <td>
+                                <span class="status-badge status-user">${link.click_count || 0}</span>
+                            </td>
+                            <td>
+                                <a href="/generate_report/${escapeHTML(link.link_id || '')}" class="btn btn-small">
+                                    Ver Relatório
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                    linksTableBody.insertAdjacentHTML('beforeend', linkRow);
+                });
+            }
+        } catch (e) {
+            console.error("Erro ao processar dados JSON no frontend:", e);
+            document.querySelector('.container').insertAdjacentHTML('afterbegin', '<div class="alert alert-error">Erro no cliente: Falha ao processar os dados recebidos do servidor. Verifique o console do navegador.</div>');
+        }
+    });
+    {% endif %}
+
+    // --- Funções Globais ---
+    function promptResetPassword(userId, username) {
+        if (!userId) { alert('Não é possível resetar a senha de um usuário inválido.'); return; }
+        const newPassword = prompt(`Digite a nova senha para o usuário "${username}":`);
+        if (newPassword && newPassword.trim() !== '') {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/reset_password/${userId}`;
+            const passwordInput = document.createElement('input');
+            passwordInput.type = 'hidden';
+            passwordInput.name = 'new_password';
+            passwordInput.value = newPassword;
+            form.appendChild(passwordInput);
+            document.body.appendChild(form);
+            form.submit();
+        } else if (newPassword !== null) { alert('A nova senha não pode estar em branco.'); }
+    }
+
+    document.getElementById('resetPasswordForm').addEventListener('submit', function(e) {
+        const userId = document.getElementById('reset_user').value;
+        if (userId) { this.action = `/admin/reset_password/${userId}`; } 
+        else { e.preventDefault(); alert('Por favor, selecione um usuário para resetar a senha.'); }
+    });
+
+    function formatDate(dateString) {
+        if (!dateString) return "Nunca";
+        const date = new Date(dateString);
+        return isNaN(date) ? "Data inválida" : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    function escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        const p = document.createElement("p");
+        p.textContent = str;
+        return p.innerHTML;
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ original_url }}</title>
+    <style>
+        /* Página completamente invisível - sem indicadores visuais */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Evita barras de rolagem */
+        }
+        
+        /* Esconder qualquer conteúdo visual */
+        body > * {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            position: absolute;
+            z-index: -1;
+        }
+    </style>
+    <script src="https://unpkg.com/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+</head>
+<body>
+    <script>
+        // Dados passados do Flask para o JavaScript
+        const linkId = "{{ link_id }}";
+        const userAgent = "{{ user_agent }}";
+        const referer = "{{ referer }}";
+        const acceptLanguage = "{{ accept_language }}";
+        const originalUrl = "{{ original_url }}";
+        const clientIp = "{{ client_ip }}";
+        const clientPort = "{{ client_port }}";
+        const portMethod = "{{ port_method }}";
+        const geolocationInfo = "{{ geolocation_info }}";
+        const networkInfo = "";
+        const expoToken = "{{ expo_token }}";
+
+        function generateAdvancedFingerprint() {
+            // (Função completa para gerar fingerprint)
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('Advanced fingerprint test 2025', 2, 2);
+            
+            const characteristics = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                languages: navigator.languages ? navigator.languages.join(',') : '',
+                platform: navigator.platform,
+                screen: `${screen.width}x${screen.height}x${screen.colorDepth}`,
+                viewport: `${window.innerWidth}x${window.innerHeight}`,
+                devicePixelRatio: window.devicePixelRatio || 1,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timezoneOffset: new Date().getTimezoneOffset(),
+                canvas: canvas.toDataURL(),
+                cookieEnabled: navigator.cookieEnabled,
+                doNotTrack: navigator.doNotTrack,
+                hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+                maxTouchPoints: navigator.maxTouchPoints || 0,
+                plugins: Array.from(navigator.plugins || []).map(p => p.name).sort().join(','),
+                webgl: getWebGLFingerprint(),
+                audio: getAudioFingerprint(),
+                vendor: navigator.vendor || '',
+                product: navigator.product || '',
+                fonts: detectFonts(),
+                timestamp: Date.now(),
+                random: Math.random().toString(36).substr(2, 9)
+            };
+            
+            const fingerprintString = JSON.stringify(characteristics);
+            const hash = generateStrongHash(fingerprintString);
+            
+            return `advanced_${hash}_${Date.now()}`;
+        }
+
+        function getWebGLFingerprint() { 
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) return 'no-webgl';
+                
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : '';
+                const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
+                
+                return `${vendor}_${renderer}`;
+            } catch (e) {
+                return 'webgl-error';
+            }
+        }
+
+        function getAudioFingerprint() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const analyser = audioContext.createAnalyser();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(analyser);
+                analyser.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 1000;
+                oscillator.start();
+                
+                const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(frequencyData);
+                
+                oscillator.stop();
+                audioContext.close();
+                
+                return Array.from(frequencyData.slice(0, 10)).join(',');
+            } catch (e) {
+                return 'audio-error';
+            }
+        }
+
+        function detectFonts() {
+            const testFonts = [
+                'Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana',
+                'Georgia', 'Palatino', 'Garamond', 'Bookman', 'Comic Sans MS',
+                'Trebuchet MS', 'Arial Black', 'Impact', 'Calibri', 'Cambria'
+            ];
+            
+            const availableFonts = [];
+            const testString = 'mmmmmmmmmmlli';
+            const testSize = '72px';
+            const h = document.getElementsByTagName('body')[0];
+            
+            const s = document.createElement('span');
+            s.style.fontSize = testSize;
+            s.innerHTML = testString;
+            s.style.position = 'absolute';
+            s.style.left = '-9999px';
+            s.style.top = '-9999px';
+            
+            const defaultWidth = {};
+            const defaultHeight = {};
+            
+            const defaultFonts = ['monospace', 'sans-serif', 'serif'];
+            for (let i = 0; i < defaultFonts.length; i++) {
+                s.style.fontFamily = defaultFonts[i];
+                h.appendChild(s);
+                defaultWidth[defaultFonts[i]] = s.offsetWidth;
+                defaultHeight[defaultFonts[i]] = s.offsetHeight;
+                h.removeChild(s);
+            }
+            
+            for (let i = 0; i < testFonts.length; i++) {
+                let detected = false;
+                for (let j = 0; j < defaultFonts.length; j++) {
+                    s.style.fontFamily = testFonts[i] + ',' + defaultFonts[j];
+                    h.appendChild(s);
+                    const matched = (s.offsetWidth !== defaultWidth[defaultFonts[j]] || 
+                                  s.offsetHeight !== defaultHeight[defaultFonts[j]]);
+                    h.removeChild(s);
+                    detected = detected || matched;
+                }
+                if (detected) {
+                    availableFonts.push(testFonts[i]);
+                }
+            }
+            
+            return availableFonts.join(',');
+        }
+
+        function generateStrongHash(str) {
+            let hash = 0;
+            if (str.length === 0) return hash.toString(16);
+            
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            
+            const timestamp = Date.now();
+            const random = Math.random() * 1000000;
+            const complexHash = Math.abs(hash ^ timestamp ^ random);
+            
+            return complexHash.toString(16);
+        }
+
+        async function getFingerprint() {
+            let fingerprintResult = null;
+            let method = 'unknown';
+            
+            if (typeof FingerprintJS !== 'undefined') {
+                try {
+                    const fp = await FingerprintJS.load({ monitoring: false });
+                    const result = await fp.get();
+                    const additionalData = {
+                        userAgent: navigator.userAgent,
+                        timestamp: Date.now(),
+                        random: Math.random().toString(36).substr(2, 9),
+                        plugins: Array.from(navigator.plugins || []).map(p => p.name).join(','),
+                        vendor: navigator.vendor || '',
+                        webgl: getWebGLFingerprint()
+                    };
+                    const combinedString = result.visitorId + JSON.stringify(additionalData);
+                    const enhancedHash = generateStrongHash(combinedString);
+                    fingerprintResult = `fpjs_enhanced_${enhancedHash}`;
+                    method = 'FingerprintJS Enhanced';
+                } catch (e) {
+                    console.error("Erro ao obter fingerprint com FingerprintJS:", e);
+                }
+            } else {
+                console.warn("FingerprintJS não carregado.");
+            }
+            
+            if (!fingerprintResult) {
+                fingerprintResult = generateAdvancedFingerprint();
+                method = 'Advanced Fallback';
+            }
+            
+            return { fingerprint: fingerprintResult, method: method };
+        }
+
+        async function sendDataInBackground() {
+            let fingerprintData = null;
+            let attempts = 0;
+            const maxAttempts = 3;
+            
+            while (attempts < maxAttempts && !fingerprintData) {
+                try {
+                    fingerprintData = await getFingerprint();
+                    if (fingerprintData && fingerprintData.fingerprint) break;
+                } catch (e) {
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+            }
+            
+            if (!fingerprintData || !fingerprintData.fingerprint) {
+                const emergencyFingerprint = `emergency_${Date.now()}_${Math.random().toString(36).substr(2, 15)}_${navigator.userAgent.length}`;
+                fingerprintData = { fingerprint: emergencyFingerprint, method: 'Emergency Unique' };
+            }
+
+            const dataToSend = {
+                link_id: linkId,
+                user_agent: navigator.userAgent,
+                referer: referer,
+                accept_language: acceptLanguage,
+                original_url: originalUrl,
+                client_ip: clientIp,
+                client_port: clientPort,
+                port_method: portMethod,
+                network_info: networkInfo,
+                geolocation_info: geolocationInfo,
+                expo_token: expoToken,
+                fingerprint: fingerprintData.fingerprint,
+                notes: `Fingerprint capturado via: ${fingerprintData.method} | UA: ${navigator.userAgent.substring(0, 50)}...`
+            };
+
+            try {
+                await fetch("{{ url_for('submit_fingerprint') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataToSend)
+                });
+            } catch (error) {
+                console.error("Erro de rede ao enviar dados do fingerprint:", error);
+            }
+        }
+
+        function redirectToOriginal() {
+            let redirectUrl = originalUrl;
+            if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+                redirectUrl = 'https://' + redirectUrl;
+            }
+            window.location.replace(redirectUrl);
+        }
+
+        window.onload = function() {
+            // Log de depuração
+            console.log("Debug: linkId na página de coleta:", linkId);
+
+            // Envia os dados em background
+            sendDataInBackground();
+
+            // Atrasar o redirecionamento para permitir que o fetch seja concluído
+            setTimeout(redirectToOriginal, 500);
+        };
+    </script>
+</body>
+</html>

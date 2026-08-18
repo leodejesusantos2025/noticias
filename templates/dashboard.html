@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Cliques</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f4f4; }
+        .navbar { background-color: #333; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar a { color: white; text-decoration: none; margin-left: 20px; }
+        .navbar a:hover { text-decoration: underline; }
+        .container { max-width: 1400px; margin: 20px auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; word-break: break-all; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .no-data { text-align: center; color: #666; margin-top: 20px; }
+        .back-link { display: block; text-align: center; margin-top: 20px; }
+        .generate-report-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .generate-report-btn:hover {
+            background-color: #218838;
+        }
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .filter-form label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+            color: #555;
+        }
+        .filter-form input[type="text"],
+        .filter-form input[type="date"] {
+            width: calc(100% - 16px); /* Ajusta para padding */
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .filter-form button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            grid-column: 1 / -1; /* Ocupa todas as colunas */
+            margin-top: 10px;
+        }
+        .filter-form button:hover {
+            background-color: #0056b3;
+        }
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div>Investigador Digital</div>
+        <div>
+            {% if current_user.is_authenticated %}
+                Olá, {{ current_user.username }}!
+                <a href="{{ url_for('index') }}">Gerar Link</a>
+                <a href="{{ url_for('logout') }}">Sair</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register') }}">Registrar</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="container">
+        <h1>Dashboard de Cliques Capturados</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('dashboard') }}" method="GET" class="filter-form">
+            <div>
+                <label for="ip_filter">Filtrar por IP:</label>
+                <input type="text" id="ip_filter" name="ip_filter" value="{{ ip_filter or '' }}" placeholder="Ex: 192.168.1.1">
+            </div>
+            <div>
+                <label for="link_id_filter">Filtrar por ID do Link:</label>
+                <input type="text" id="link_id_filter" name="link_id_filter" value="{{ link_id_filter or '' }}" placeholder="Ex: a3b4c5">
+            </div>
+            <div>
+                <label for="start_date">Data de Início:</label>
+                <input type="date" id="start_date" name="start_date" value="{{ start_date or '' }}">
+            </div>
+            <div>
+                <label for="end_date">Data de Fim:</label>
+                <input type="date" id="end_date" name="end_date" value="{{ end_date or '' }}">
+            </div>
+            <button type="submit">Aplicar Filtros</button>
+        </form>
+
+        {% if clicks %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>IP do Golpista</th>
+                        <th>Porta Lógica</th>
+                        <th>Geolocalização</th>
+                        <th>User Agent (Detalhado)</th>
+                        <th>Fingerprint do Navegador</th>
+                        <th>Referer</th>
+                        <th>Idioma</th>
+                        <th>Timestamp</th>
+                        <th>Notas/Observações</th>
+                        <th>ID do Link</th>
+                        <th>URL Original</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for click in clicks %}
+                    <tr>
+                        <td>{{ click.id }}</td>
+                        <td>{{ click.ip_address }}</td>
+                        <td>
+                            {% if click.client_port %}
+                                {{ click.client_port }}
+                                {% if click.port_detection_method %}
+                                    <br><small style="color: #666;">(via {{ click.port_detection_method }})</small>
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td>{{ click.geolocation_info or 'N/A' }}</td>
+                        <td>{{ click.user_agent or 'N/A' }}</td>
+                        <td>{{ click.browser_fingerprint or 'N/A' }}</td>
+                        <td>{{ click.referer or 'N/A' }}</td>
+                        <td>{{ click.accept_language or 'N/A' }}</td>
+                        <td>{{ click.timestamp }}</td>
+                        <td>{{ click.notes or 'N/A' }}</td>
+                        <td>{{ click.link_id }}</td>
+                        <td><a href="{{ click.original_url }}" target="_blank">{{ click.original_url }}</a></td>
+                        <td>
+                            <a href="{{ url_for('generate_report', link_id=click.link_id) }}" class="generate-report-btn" target="_blank">Gerar Relatório PDF</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data">Nenhum clique registrado com os filtros aplicados. Tente ajustar os filtros.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
