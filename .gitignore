@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+!.env.firebase.example
+__pycache__/
+*.pyc
+clicks.db
+instance/

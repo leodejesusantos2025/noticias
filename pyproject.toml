@@ -1,0 +1,19 @@
+[project]
+name = "investigador-digital"
+version = "0.1.0"
+description = "Aplicação Flask com autenticação, dashboard e relatórios."
+authors = [{name = "Equipe do projeto"}]
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "flask>=3.1.1",
+    "firebase-functions>=0.6.0",
+    "flask-login>=0.6.3",
+    "gunicorn>=23.0.0",
+    "psycopg2-binary>=2.9.10",
+    "python-dotenv>=1.1.1",
+    "reportlab>=4.4.2",
+    "requests>=2.32.4",
+    "user-agents>=2.2.0",
+    "werkzeug>=3.1.3",
+]

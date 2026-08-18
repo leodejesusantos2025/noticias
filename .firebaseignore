@@ -1,0 +1,13 @@
+.env
+.git
+.firebase
+__pycache__/
+*.pyc
+*.db
+clicks.db
+instance/
+public/
+node_modules/
+.venv/
+venv/
+env/
