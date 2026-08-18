@@ -21,11 +21,6 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from user_agents import parse
 import re
 
-try:
-    from firebase_functions import https_fn
-except ImportError:
-    https_fn = None
-
 from database import (
     init_db, User, add_user, add_generated_link, get_original_url_from_generated_link,
     add_click, get_all_clicks_for_user, get_generated_link_details, get_user_push_token,
@@ -772,13 +767,6 @@ def submit_fingerprint():
         'fingerprint_received': fingerprint,
         'port_info': f"{client_port} (via {port_method})"
     })
-
-if https_fn is not None:
-    @https_fn.on_request(region="us-central1", timeout_sec=60)
-    def webapp(req: https_fn.Request) -> https_fn.Response:
-        with app.request_context(req.environ):
-            return app.full_dispatch_request()
-
 if __name__ == '__main__':
     print("🔧 Executando init_db() no __main__...")
     init_db()

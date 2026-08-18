@@ -4,7 +4,6 @@ certifi==2025.7.14
 charset-normalizer==3.4.2
 click==8.2.1
 Flask==3.1.1
-firebase-functions==0.6.0
 Flask-Login==0.6.3
 gunicorn==23.0.0
 idna==3.10
